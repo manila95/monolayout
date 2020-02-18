@@ -1,11 +1,6 @@
 # MonoLayout: Amodal Scene Layout from a single image
 #### Kaustubh Mani, Swapnil Daga, Shubhika Garg, N. Sai Shankar, [J. Krishna Murthy](https://krrish94.github.io), and [K. Madhava Krishna](http://robotics.iiit.ac.in)
-
-
 ![](figs/teaserv5.png)
-
-
-
 ## Results (KITTI Dataset)
 
 
