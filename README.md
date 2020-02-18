@@ -9,18 +9,18 @@
 ## Results (KITTI Dataset)
 
 
-![Alt Text](kitti1.gif)
+![](figs/kitti1.gif)
 
 
-![Alt Text](kitti_final.gif)
+![](figs/kitti_final.gif)
 
 
 ## Results (Argoverse Dataset)
 
-![Alt Text](argo_2.gif)
+![](figs/argo_2.gif)
 
 
-![Alt Text](argo_1.gif)
+![](figs/argo_1.gif)
 
 
 **Code will be released by late March 2020**
