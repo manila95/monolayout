@@ -1,6 +1,10 @@
 # MonoLayout: Amodal Scene Layout from a single image
 #### Kaustubh Mani, Swapnil Daga, Shubhika Garg, N. Sai Shankar, [J. Krishna Murthy](https://krrish94.github.io), and [K. Madhava Krishna](http://robotics.iiit.ac.in)
 
+#### [Paper](https://arxiv.org/abs/2002.08394), [Video](https://www.youtube.com/watch?v=HcroGyo6yRQ)
+
+#### Accepted to [WACV 2020](http://wacv20.wacv.net/)
+
 <p align="center">
     <img src="figs/teaserv5.png" />
 </p>
@@ -45,3 +49,16 @@ State-of-the-art amodal scene layout from a single image @ 32 fps*
 </p>
 
 **Code will be released by late March 2020**
+
+## Citing (BibTeX)
+
+If you find this work useful, please use the following BibTeX entry for citing us!
+
+```
+@article{monolayout,
+    author = { Mani, Kaustubh and Daga, Swapnil and Garg, Shubhika and Shankar, Sai and Krishna Murthy, J. and Madhava Krishna, K. },
+    title = { MonoLayout: Amodal layout estimation from a single image },
+    journal = { Winter Applications of Computer Vision (WACV) },
+    year = { 2020 },
+}
+```
