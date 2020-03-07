@@ -55,10 +55,11 @@ State-of-the-art amodal scene layout from a single image @ 32 fps*
 If you find this work useful, please use the following BibTeX entry for citing us!
 
 ```
-@article{monolayout,
-    author = { Mani, Kaustubh and Daga, Swapnil and Garg, Shubhika and Shankar, Sai and Krishna Murthy, J. and Madhava Krishna, K. },
-    title = { MonoLayout: Amodal layout estimation from a single image },
-    journal = { Winter Applications of Computer Vision (WACV) },
-    year = { 2020 },
+@inproceedings{mani2020monolayout,
+  title={MonoLayout: Amodal scene layout from a single image},
+  author={Mani, Kaustubh and Daga, Swapnil and Garg, Shubhika and Narasimhan, Sai Shankar and Krishna, Madhava and Jatavallabhula, Krishna Murthy},
+  booktitle={The IEEE Winter Conference on Applications of Computer Vision},
+  pages={1689--1697},
+  year={2020}
 }
 ```
