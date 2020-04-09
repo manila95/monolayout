@@ -218,7 +218,7 @@ class Trainer:
 
     def save_model(self):
         save_path = os.path.join(self.opt.save_path, self.opt.model_name, "weights_{}".format(self.epoch))
-        print(save_path)
+
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 

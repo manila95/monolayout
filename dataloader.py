@@ -144,13 +144,14 @@ class KITTIObject(MonoDataset):
         self.root_dir = "./data/object"
 
     def get_image_path(self, root_dir, frame_index):
-        file_name = frame_index.replace("TV_car", "image_2")
-        img_path = os.path.join(root_dir, file_name)
+        image_dir = os.path.join(root_dir, 'image_2')
+        img_path = os.path.join(image_dir, "%06d.png" % int(frame_index))
         return img_path
 
     def get_dynamic_path(self, root_dir, frame_index):
-        path = os.path.join(root_dir, frame_index)
-        return path
+        tv_dir = os.path.join(root_dir, 'TV_car')
+        tv_path = os.path.join(tv_dir, "%06d.png" % int(frame_index))
+        return tv_path
 
 
 
