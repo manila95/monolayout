@@ -5,7 +5,37 @@
 ![](figs/teaserv5.png)
 
 
-## Code
+## 1. Usage
+
+### 1.1 Dataset
+
+You need to download the KITTI 3Dobject and odometry dataset from [here](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d), including left color images and labels corresponding to 3D objects. The generated top-views using our data preparation method can be downloaded from [here](https://www.google.com/url?q=https://drive.google.com/file/d/1KhqsHbruE16BFEiIcvtbzuXxKGMbxogk/view?usp%3Dsharing&sa=D&source=hangouts&ust=1586514007721000&usg=AFQjCNGaBbJtbNyVWhv2Zf7AwKeKz-xBJQ).
+
+```angular2html
+data/
+    object/
+      training/
+          calib/
+          image_2/ #left image
+          label_2/
+          TV_car/
+        
+      testing/
+          calib/
+          image_2/
+
+    odometry/
+      sequences/
+          00/
+            image_2/ #left image
+            road_dense128/
+          01/
+            image_2/ #left image
+            road_dense128/
+          02/
+          ...
+
+```
 
 #### MonoLayout-Static
 
