@@ -5,6 +5,32 @@
 ![](figs/teaserv5.png)
 
 
+## Code
+
+#### MonoLayout-Static
+
+```
+python3 train.py --type static --split odometry --data_path ./data/odometry/sequences/ 
+```
+
+
+
+#### MonoLayout-Dynamic
+
+```
+python3 train.py --type dynamic --split 3Dobject --data_path ./data/object/training/
+```
+
+
+#### Layout Prediction (Inference)
+
+
+```
+python3 test.py --type static --model_path <path to the model folder> --image_path <path to the image directory>  
+```
+
+
+
 
 ## Results (KITTI Dataset)
 
