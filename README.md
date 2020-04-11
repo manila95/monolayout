@@ -2,7 +2,7 @@
 #### Kaustubh Mani, Swapnil Daga, Shubhika Garg, N. Sai Shankar, [J. Krishna Murthy](https://krrish94.github.io), and [K. Madhava Krishna](http://robotics.iiit.ac.in)
 
 <p align="center">
-![](figs/teaserv5.png)
+    <img src="figs/teaserv5.png">
 </p>
 
 
@@ -47,21 +47,21 @@ python3 test.py --type static --model_path <path to the model folder> --image_pa
 ## Results (KITTI Dataset)
 
 <p align="center">
-![](figs/kitti1.gif)
+    <img src="figs/kitti1.gif">
 </p>
 
 
 <p align="center">
-![](figs/kitti_final.gif)
+    <img src="figs/kitti_final.gif">
 </p>
 
 
 ## Results (Argoverse Dataset)
 
 <p align="center">
-![](figs/argo_2.gif)
+    <img src="figs/argo_2.gif">
 </p>
 
 <p align="center">
-![](figs/argo_1.gif)
+    <img src="figs/argo_1.gif">
 </p>
