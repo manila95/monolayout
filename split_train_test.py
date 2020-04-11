@@ -1,7 +1,6 @@
 import os
 import sys
 
-
 file_name = sys.argv[2]
 file_path = sys.argv[1]
 
@@ -11,5 +10,3 @@ for folder in os.listdir(file_path)[:8]:
     for file_ in os.listdir(folder_path):
         f.write(os.path.join(folder, "road_dense128", file_))
         f.write("\n")
-
-
