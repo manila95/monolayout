@@ -11,13 +11,13 @@ from torchvision import transforms
 
 def pil_loader(path):
     with open(path, "rb") as f:
-        with Image.open(f) as img:
+        with pil.open(f) as img:
             return img.convert("RGB")
 
 
 def process_topview(topview, size):
     topview = topview.convert("1")
-    topview = topview.resize((size, size), Image.NEAREST)
+    topview = topview.resize((size, size), pil.NEAREST)
     topview = topview.convert("L")
     topview = np.array(topview)
     topview_n = np.zeros(topview.shape)
@@ -29,7 +29,7 @@ def no_augmentation(x):
     return x
 
 
-class MonoDataset(torch.utils.dataDataset):
+class MonoDataset(torch.utils.data.Dataset):
     def __init__(self, opt, filenames, is_train=True):
         super(MonoDataset, self).__init__()
 
@@ -39,7 +39,7 @@ class MonoDataset(torch.utils.dataDataset):
         self.is_train = is_train
         self.height = self.opt.height
         self.width = self.opt.width
-        self.interp = Image.ANTIALIAS
+        self.interp = pil.ANTIALIAS
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
 

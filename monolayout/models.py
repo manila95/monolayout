@@ -131,8 +131,8 @@ class ResNetFeatureExtractor(torchvision.models.ResNet):
     feature extractor.
     """
 
-    def __init__(self, pretrained=True):
-        num_layers = 18
+    def __init__(self, resnet_num_layers, pretrained=True):
+        num_layers = resnet_num_layers
         block_sizes = [2, 2, 2, 2]
 
         super(ResNetFeatureExtractor, self).__init__(
