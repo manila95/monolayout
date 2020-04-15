@@ -1,18 +1,18 @@
-import argparse
-
-# from validate import *
 import os
+import tqdm
+import argparse
+import numpy as np
 
-# import eval_segm
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import tqdm
+
 from torch.utils.data import DataLoader
+from torch.autograd import Variable
 
 from monolayout import datasets
 from monolayout import models
-
+from eval import *
 
 def get_args():
     parser = argparse.ArgumentParser(description="MonoLayout options")
@@ -23,7 +23,15 @@ def get_args():
         help="Path to the root data directory",
     )
     parser.add_argument(
-        "--save_path", type=str, default="./models/", help="Path to save models"
+        "--osm_path",
+        type=str,
+        default="./data/osm",
+        help="Path to OSM maps representing true data distribution for roads")
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default="./models/", 
+        help="Path to save models"
     )
     parser.add_argument(
         "--model_name",
@@ -38,20 +46,44 @@ def get_args():
         help="Data split for training/validation",
     )
     parser.add_argument(
-        "--ext", type=str, default="png", help="File extension of the images"
+        "--ext", 
+        type=str, 
+        default="png", 
+        help="File extension of the images"
     )
-    parser.add_argument("--height", type=int, default=512, help="Image height")
-    parser.add_argument("--width", type=int, default=512, help="Image width")
+    parser.add_argument("--height", 
+        type=int, 
+        default=512, 
+        help="Image height"
+    )
+    parser.add_argument("--width", 
+        type=int, 
+        default=512, 
+        help="Image width"
+    )
     parser.add_argument(
         "--type",
         type=str,
         choices=["both", "static", "dynamic"],
         help="Type of model being trained",
     )
-    parser.add_argument("--batch_size", type=int, default=16, help="Mini-Batch size")
-    parser.add_argument("--lr", type=float, default=1e-5, help="learning rate")
     parser.add_argument(
-        "--lr_D", type=float, default=1e-5, help="discriminator learning rate"
+        "--batch_size", 
+        type=int, 
+        default=16, 
+        help="Mini-Batch size"
+    )
+    parser.add_argument(
+        "--lr", 
+        type=float, 
+        default=1e-5, 
+        help="learning rate"
+    )
+    parser.add_argument(
+        "--lr_D", 
+        type=float, 
+        default=1e-5, 
+        help="discriminator learning rate"
     )
     parser.add_argument(
         "--scheduler_step_size",
@@ -72,10 +104,32 @@ def get_args():
         help="dynamic weight for calculating loss",
     )
     parser.add_argument(
-        "--num_epochs", type=int, default=100, help="Max number of training epochs"
+        "--lambda_D",
+        type=float, 
+        default=0.01,
+        help="tradeoff weight for discriminator loss")
+    parser.add_argument("--occ_map_size",
+        type=int,
+        default=128,
+        help="Occupancy Map Size"
     )
     parser.add_argument(
-        "--log_frequency", type=int, default=5, help="Log files every x epochs"
+        "--discr_train_epoch",
+        type=int,
+        default=5,
+        help="discriminator training epoch"
+    )
+    parser.add_argument(
+        "--num_epochs",
+         type=int,
+         default=100,
+         help="Max number of training epochs"
+    )
+    parser.add_argument(
+        "--log_frequency", 
+        type=int, 
+        default=5, 
+        help="Log files every x epochs"
     )
     parser.add_argument(
         "--num_workers",
@@ -118,7 +172,7 @@ class Trainer:
             self.models["dynamic_discr"] = models.MonoLayoutDiscriminator(2)
         else:
             self.models["decoder"] = models.MonoLayoutDecoder()
-            self.models["discriminator"] = models.MonoLayoutDiscriminator(2)
+            self.models["discriminator"] = models.Discriminator()
 
         for key in self.models.keys():
             self.models[key].to(self.device)
@@ -127,16 +181,21 @@ class Trainer:
             else:
                 self.parameters_to_train += list(self.models[key].parameters())
 
+        self.patch = (1, self.opt.occ_map_size // 2**4, self.opt.occ_map_size // 2**4)
+
+        self.valid = Variable(torch.Tensor(np.ones((self.opt.batch_size, *self.patch))),
+                                                     requires_grad=False).float().cuda()
+        self.fake  = Variable(torch.Tensor(np.zeros((self.opt.batch_size, *self.patch))),
+                                                     requires_grad=False).float().cuda()
+
         # Optimization
         self.model_optimizer = optim.Adam(self.parameters_to_train, self.opt.lr)
         self.model_lr_scheduler = optim.lr_scheduler.StepLR(
-            self.model_optimizer, self.opt.scheduler_step_size, 0.1
-        )
+            self.model_optimizer, self.opt.scheduler_step_size, 0.1)
 
         self.model_optimizer_D = optim.Adam(self.parameters_to_train_D, self.opt.lr)
         self.model_lr_scheduler_D = optim.lr_scheduler.StepLR(
-            self.model_optimizer_D, self.opt.scheduler_step_size, 0.1
-        )
+            self.model_optimizer_D, self.opt.scheduler_step_size, 0.1)
 
         # Data Loaders
         dataset_dict = {
@@ -169,7 +228,7 @@ class Trainer:
         )
         self.val_loader = DataLoader(
             val_dataset,
-            self.opt.batch_size,
+            1,
             True,
             num_workers=self.opt.num_workers,
             pin_memory=True,
@@ -177,11 +236,8 @@ class Trainer:
         )
 
         print("Using split:\n  ", self.opt.split)
-        print(
-            "There are {:d} training items and {:d} validation items\n".format(
-                len(train_dataset), len(val_dataset)
-            )
-        )
+        print("There are {:d} training items and {:d} validation items\n".format(
+                len(train_dataset), len(val_dataset)))
 
     def train(self):
 
@@ -192,27 +248,42 @@ class Trainer:
                 % (self.epoch, loss["loss"], loss["loss_discr"])
             )
 
-            if self.epoch % self.opt.log_frequency:
+            if self.epoch % self.opt.log_frequency == 0:
+                self.validation()
                 self.save_model()
 
     def run_epoch(self):
         self.model_optimizer.step()
-        # self.model_optimizer_D.step()
+        self.model_optimizer_D.step()
         loss = {}
         loss["loss"], loss["loss_discr"] = 0.0, 0.0
         for batch_idx, inputs in tqdm.tqdm(enumerate(self.train_loader)):
             outputs, losses = self.process_batch(inputs)
             self.model_optimizer.zero_grad()
-            losses["loss"].backward()
-            self.model_optimizer.step()
+            fake_pred = self.models["discriminator"](outputs["topview"])
+            real_pred = self.models["discriminator"](inputs["discr"].float())
+            loss_GAN  = self.criterion_d(fake_pred, self.valid) 
+            loss_D    = self.criterion_d(fake_pred, self.fake)+ self.criterion_d(real_pred, self.valid)
+            loss_G    = self.opt.lambda_D * loss_GAN + losses["loss"]
 
+            # Train Discriminator
+            if self.epoch > self.opt.discr_train_epoch:
+                loss_G.backward(retain_graph=True)
+                self.model_optimizer.step()
+                self.model_optimizer_D.zero_grad()
+                loss_D.backward()
+                self.model_optimizer_D.step()
+            else:
+                losses["loss"].backward()
+                self.model_optimizer.step()
+                    
             loss["loss"] += losses["loss"].item()
-            loss["loss_discr"] += losses["loss_discr"].item()
+            loss["loss_discr"] += loss_D.item()
         loss["loss"] /= len(self.train_loader)
         loss["loss_discr"] /= len(self.train_loader)
         return loss
 
-    def process_batch(self, inputs):
+    def process_batch(self, inputs, validation=False):
         outputs = {}
         for key, inpt in inputs.items():
             inputs[key] = inpt.to(self.device)
@@ -226,11 +297,26 @@ class Trainer:
             losses["loss_discr"] = torch.zeros(1)
         else:
             outputs["topview"] = self.models["decoder"](features)
-
+        if validation:
+            return outputs
+        
         losses = self.compute_losses(inputs, outputs)
-        losses["loss_discr"] = torch.zeros(1)
 
         return outputs, losses
+
+    def validation(self):
+        iou, mAP = np.array([0., 0.]), np.array([0., 0.])
+        for batch_idx, inputs in tqdm.tqdm(enumerate(self.val_loader)):
+            with torch.no_grad():
+                outputs = self.process_batch(inputs, True)
+            pred = np.squeeze(torch.argmax(outputs["topview"].detach(), 1).cpu().numpy())
+            true = np.squeeze(inputs[self.opt.type].detach().cpu().numpy())
+            iou += mean_IU(pred, true)
+            mAP += mean_precision(pred, true)
+        iou /= len(self.val_loader)
+        mAP /= len(self.val_loader)
+        print("Epoch: %d | Validation: mIOU: %.4f mAP: %.4f"%(self.epoch, iou[1], mAP[1]))
+
 
     def compute_losses(self, inputs, outputs):
         losses = {}
@@ -256,11 +342,12 @@ class Trainer:
         output = loss(generated_top_view, true_top_view)
         return output.mean()
 
+
     def save_model(self):
         save_path = os.path.join(
             self.opt.save_path, self.opt.model_name, "weights_{}".format(self.epoch)
         )
-        print(save_path)
+        
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 

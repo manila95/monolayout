@@ -14,14 +14,24 @@ def pil_loader(path):
         with pil.open(f) as img:
             return img.convert("RGB")
 
-
-def process_topview(topview, size):
+def resize_topview(topview, size):
     topview = topview.convert("1")
     topview = topview.resize((size, size), pil.NEAREST)
     topview = topview.convert("L")
     topview = np.array(topview)
+    return topview
+
+def process_topview(topview, size):
+    topview = resize_topview(topview, size)
     topview_n = np.zeros(topview.shape)
     topview_n[topview == 255] = 1  # [1.,0.]
+    return topview_n
+
+def process_discr(topview, size):
+    topview = resize_topview(topview, size)
+    topview_n = np.zeros((size, size, 2))
+    topview_n[topview==255, 1] = 1.
+    topview_n[topview==0, 0] = 1.
     return topview_n
 
 
@@ -68,8 +78,8 @@ class MonoDataset(torch.utils.data.Dataset):
         inputs["color"] = color_aug(self.resize(inputs["color"]))
 
         for key in inputs.keys():
-            if key != "color":
-                inputs[key] = process_topview(inputs[key], 128)
+            if key != "color" and "discr" not in key:
+                inputs[key] = process_topview(inputs[key], self.opt.occ_map_size)
             inputs[key] = self.to_tensor(inputs[key])
 
     def __len__(self):
@@ -82,17 +92,15 @@ class MonoDataset(torch.utils.data.Dataset):
         do_flip = self.is_train and random.random() > 0.5
 
         frame_index = self.filenames[index]  # .split()
-        folder = (
-            self.opt.data_path
-        )  # check this part from original code if the dataset is changed
+        folder = self.opt.data_path
 
         inputs["color"] = self.get_color(folder, frame_index, do_flip)
         if self.opt.type == "static":
             inputs["static"] = self.get_static(folder, frame_index, do_flip)
-            # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
+            inputs["discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
         elif self.opt.type == "dynamic":
             inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
-            # inputs["true_dynamic"] = self.get_osm(folder, frame_index, do_flip)
+            inputs["discr"] = process_discr(inputs["dynamic"], self.opt.occ_map_size)
         else:
             inputs["static"] = self.get_static(folder, frame_index, do_flip)
             inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
@@ -134,8 +142,12 @@ class MonoDataset(torch.utils.data.Dataset):
 
         return tv.convert("L")
 
-    def get_osm(self, root_dir, frame_index, do_flip):
-        osm = self.loader(self.get_osm_path(root_dir, frame_index))
+    def get_osm(self, root_dir, do_flip):
+        osm = self.loader(self.get_osm_path(root_dir))
+
+        if do_flip:
+            osm = osm.transpose(pil.FLIP_LEFT_RIGHT)
+
         return osm
 
 
@@ -148,14 +160,14 @@ class KITTIObject(MonoDataset):
         self.root_dir = "./data/object"
 
     def get_image_path(self, root_dir, frame_index):
-        file_name = frame_index.replace("TV_car", "image_2")
-        img_path = os.path.join(root_dir, file_name)
+        image_dir = os.path.join(root_dir, 'image_2')
+        img_path = os.path.join(image_dir, "%06d.png" % int(frame_index))
         return img_path
 
     def get_dynamic_path(self, root_dir, frame_index):
-        path = os.path.join(root_dir, frame_index)
-        return path
-
+        tv_dir = os.path.join(root_dir, 'TV_car')
+        tv_path = os.path.join(tv_dir, "%06d.png" % int(frame_index))
+        return tv_path
 
 class KITTIOdometry(MonoDataset):
     def __init__(self, *args, **kwargs):
@@ -171,12 +183,9 @@ class KITTIOdometry(MonoDataset):
         path = os.path.join(root_dir, frame_index)
         return path
 
-    def get_osm_path(self, root_dir, frame_index, paired=False):
-        if not paired:
-            osm_file = np.random.choice(os.listdir(root_dir))
-            osm_path = os.path.join(root_dir, osm_file)
-        else:
-            osm_path = os.path.join(root_dir, frame_index)
+    def get_osm_path(self, root_dir):
+        osm_file = np.random.choice(os.listdir(root_dir))
+        osm_path = os.path.join(root_dir, osm_file)
 
         return osm_path
 

@@ -163,3 +163,33 @@ class ResNetFeatureExtractor(torchvision.models.ResNet):
         features.append(self.layer3(features[-1]))
         features.append(self.layer4(features[-1]))
         return features
+
+
+
+
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.main = nn.Sequential(
+            # input is (nc) x 64 x 64
+            nn.Conv2d(2, 8, 3, 2, 1, 1, bias=False),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf) x 32 x 32
+            nn.Conv2d(8, 16, 3, 2, 1, 1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*2) x 16 x 16
+            nn.Conv2d(16, 32, 3, 2, 1, 1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*4) x 8 x 8
+            nn.Conv2d(32, 8, 3, 2, 1, 1, bias=False),
+            nn.BatchNorm2d(8),
+            nn.LeakyReLU(0.2, inplace=True),
+            # state size. (ndf*8) x 4 x 4
+            nn.Conv2d(8, 1, 3, 1, 1, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, input):
+        return self.main(input)
