@@ -30,20 +30,12 @@ TORCH_MINIMUM_VERSION = "1.0.0"
 logger = logging.getLogger()
 logging.basicConfig(format="%(levelname)s - %(message)s")
 
-# Check that PyTorch version installed meets minimum requirements.
-if torch.__version__ < TORCH_MINIMUM_VERSION:
-    logger.warning(
-        f"gradslam has beent tested with PyTorch >= {0}. Found version {1} instead.".format(
-            TORCH_MINIMUM_VERSION, torch.__version__
-        )
-    )
-
 
 def get_requirements():
     return [
         "matplot",
         "numpy",
-        "pil",
+        "pillow",
         "torch>=1.0",
         "torchvision",
     ]
