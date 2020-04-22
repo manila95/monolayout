@@ -57,10 +57,15 @@ class MonoLayoutDecoder(nn.Module):
 
         self.final_conv = PadAndConvolve(layer_sizes[-1], out_channels)
 
-    def forward(self, x):
+    def forward(self, x, is_training=False):
         for i in range(len(self.decoder_blocks)):
             x = self.decoder_blocks[i](x)
-        return self.final_conv(x)
+        x = self.final_conv(x)
+        if is_training:
+            return x
+        else:
+            softmax = nn.Softmax2d()
+            return softmax(x)
 
 
 class MonoLayoutDiscriminator(nn.Module):
