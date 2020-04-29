@@ -5,11 +5,9 @@
 ![](figs/teaserv5.png)
 
 
-## 1. Usage
+## Usage
 
-### 1.1 Dataset
-
-You need to download the KITTI 3Dobject and odometry dataset from [here](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d), including left color images and labels corresponding to 3D objects. The generated top-views using our data preparation method can be downloaded from [here](https://www.google.com/url?q=https://drive.google.com/file/d/1KhqsHbruE16BFEiIcvtbzuXxKGMbxogk/view?usp%3Dsharing&sa=D&source=hangouts&ust=1586514007721000&usg=AFQjCNGaBbJtbNyVWhv2Zf7AwKeKz-xBJQ).
+You need to download the KITTI 3Dobject and odometry dataset from [here](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d), including left color images and labels corresponding to 3D objects. The generated top-views using our data preparation method can be downloaded from [here](https://www.google.com/url?q=https://drive.google.com/file/d/1KhqsHbruE16BFEiIcvtbzuXxKGMbxogk/view?usp%3Dsharing&sa=D&source=hangouts&ust=1586514007721000&usg=AFQjCNGaBbJtbNyVWhv2Zf7AwKeKz-xBJQ). Trained models for static and dynamic version of MonoLayout can be downloaded from [here](https://drive.google.com/drive/folders/10YYjjqS5Qa4N61E9MT2FA5Zxb-X1xhsI?usp=sharing).
 
 ```angular2html
 data/
