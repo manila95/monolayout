@@ -30,6 +30,22 @@ def process_topview(topview, size):
 	return topview_n
 
 
+def resize_topview(topview, size):
+    topview = topview.convert("1")
+    topview = topview.resize((size, size), pil.NEAREST)
+    topview = topview.convert("L")
+    topview = np.array(topview)
+    return topview
+
+
+def process_discr(topview, size):
+    topview = resize_topview(topview, size)
+    topview_n = np.zeros((size, size, 2))
+    topview_n[topview==255, 1] = 1.
+    topview_n[topview==0, 0] = 1.
+    return topview_n
+
+
 class MonoDataset(data.Dataset):
     def __init__(self, opt, filenames, is_train=True):
         super(MonoDataset, self).__init__()
@@ -66,8 +82,8 @@ class MonoDataset(data.Dataset):
         inputs["color"] = color_aug(self.resize(inputs["color"]))
 
         for key in inputs.keys():
-            if key != "color":
-                inputs[key] = process_topview(inputs[key], 128)
+            if key != "color" and "discr" not in key:
+                inputs[key] = process_topview(inputs[key], self.opt.occ_map_size)
             inputs[key] = self.to_tensor(inputs[key])
 
 
@@ -86,16 +102,18 @@ class MonoDataset(data.Dataset):
         inputs["color"] = self.get_color(folder, frame_index, do_flip)
         if self.opt.type == "static":
             inputs["static"] = self.get_static(folder, frame_index, do_flip)
+            inputs["discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
             # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
         elif self.opt.type == "dynamic":
             inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
+            inputs["discr"] = process_discr(inputs["dynamic"], self.opt.occ_map_size)
             # inputs["true_dynamic"] = self.get_osm(folder, frame_index, do_flip)
         else:
             inputs["static"] = self.get_static(folder, frame_index, do_flip)
             inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
 
        # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
-        
+   
         if do_color_aug:
             color_aug = transforms.ColorJitter.get_params(
                 self.brightness, self.contrast, self.saturation, self.hue)
@@ -130,8 +148,8 @@ class MonoDataset(data.Dataset):
 
         return tv.convert('L')
 
-    def get_osm(self, root_dir, frame_index, do_flip):
-        osm = self.loader(self.get_osm_path(root_dir, frame_index))
+    def get_osm(self, root_dir, do_flip):
+        osm = self.loader(self.get_osm_path(root_dir))
         return osm
 
 
@@ -169,12 +187,9 @@ class KITTIOdometry(MonoDataset):
         path = os.path.join(root_dir, 	frame_index)
         return path
 
-    def get_osm_path(self, root_dir, frame_index, paired=False):
-        if not paired:
-            osm_file = np.random.choice(os.listdir(root_dir))
-            osm_path = os.path.join(root_dir, osm_file)
-        else:
-            osm_path = os.path.join(root_dir, frame_index)
+    def get_osm_path(self, root_dir):
+        osm_file = np.random.choice(os.listdir(root_dir))
+        osm_path = os.path.join(root_dir, osm_file)
 
         return osm_path
 

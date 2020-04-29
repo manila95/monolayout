@@ -13,6 +13,7 @@ import os
 import json
 import tqdm
 import argparse
+from eval import *
 # from utils import *
 # from kitti_utils import *
 # from layers import *
@@ -55,12 +56,20 @@ def get_args():
                          help="static weight for calculating loss")
     parser.add_argument("--dynamic_weight", type=float, default=15.,
                          help="dynamic weight for calculating loss")
+    parser.add_argument("--occ_map_size", type=int, default=128,
+                         help="size of topview occupancy map")
     parser.add_argument("--num_epochs", type=int, default=100,
                          help="Max number of training epochs")
     parser.add_argument("--log_frequency", type=int, default=5,
                          help="Log files every x epochs")
     parser.add_argument("--num_workers", type=int, default=12,
                          help="Number of cpu workers for dataloaders")
+    parser.add_argument("--lambda_D", type=float, default=0.01,
+                         help="tradeoff weight for discriminator loss")
+    parser.add_argument("--discr_train_epoch", type=int, default=5,
+                         help="epoch to start training discriminator")
+    parser.add_argument("--osm_path", type=str, default="./data/osm",
+                         help="OSM path")
 
     return parser.parse_args()
 
@@ -96,7 +105,7 @@ class Trainer:
                 self.models["encoder"].resnet_encoder.num_ch_enc)
         else:
             self.models["decoder"] = model.Decoder(self.models["encoder"].resnet_encoder.num_ch_enc)
-            self.models["discriminator"] = model.Discriminator(2)
+            self.models["discriminator"] = model.Discriminator()
 
         for key in self.models.keys():
             self.models[key].to(self.device)
@@ -114,6 +123,12 @@ class Trainer:
         self.model_lr_scheduler_D = optim.lr_scheduler.StepLR(self.model_optimizer_D, 
             self.opt.scheduler_step_size, 0.1)
 
+        self.patch = (1, self.opt.occ_map_size // 2**4, self.opt.occ_map_size // 2**4)
+
+        self.valid = Variable(torch.Tensor(np.ones((self.opt.batch_size, *self.patch))),
+                                                     requires_grad=False).float().cuda()
+        self.fake  = Variable(torch.Tensor(np.zeros((self.opt.batch_size, *self.patch))),
+                                                     requires_grad=False).float().cuda()
 
         ## Data Loaders
         dataset_dict = {"3Dobject": dataloader.KITTIObject, 
@@ -135,7 +150,7 @@ class Trainer:
 
         self.train_loader = DataLoader(train_dataset, self.opt.batch_size, True,
                                        num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
-        self.val_loader = DataLoader(val_dataset, self.opt.batch_size, True,
+        self.val_loader = DataLoader(val_dataset, 1, True,
                                        num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
 
 
@@ -151,10 +166,11 @@ class Trainer:
             print("Epoch: %d | Loss: %.4f | Discriminator Loss: %.4f"%(self.epoch, loss["loss"], 
                 loss["loss_discr"]))
 
-            if self.epoch % self.opt.log_frequency:
+            if self.epoch % self.opt.log_frequency == 0:
+                self.validation()
                 self.save_model()
 
-    def run_epoch(self):
+    def run_epoch1(self):
         self.model_optimizer.step()
         # self.model_optimizer_D.step()
         loss = {}
@@ -172,7 +188,7 @@ class Trainer:
         return loss
 
 
-    def process_batch(self, inputs):
+    def process_batch(self, inputs, validation=False):
         outputs = {}
         for key, inpt in inputs.items():
             inputs[key] = inpt.to(self.device)
@@ -186,11 +202,61 @@ class Trainer:
             losses["loss_discr"] = torch.zeros(1)
         else:
             outputs["topview"] = self.models["decoder"](features)
-
+        if validation:
+            return outputs
         losses = self.compute_losses(inputs, outputs)
         losses["loss_discr"] = torch.zeros(1)
 
+
         return outputs, losses
+
+
+    def run_epoch(self):
+        self.model_optimizer.step()
+        self.model_optimizer_D.step()
+        loss = {}
+        loss["loss"], loss["loss_discr"] = 0.0, 0.0
+        for batch_idx, inputs in tqdm.tqdm(enumerate(self.train_loader)):
+            outputs, losses = self.process_batch(inputs)
+            self.model_optimizer.zero_grad()
+            fake_pred = self.models["discriminator"](outputs["topview"])
+            real_pred = self.models["discriminator"](inputs["discr"].float())
+            loss_GAN  = self.criterion_d(fake_pred, self.valid)
+            loss_D    = self.criterion_d(fake_pred, self.fake)+ self.criterion_d(real_pred, self.valid)
+            loss_G    = self.opt.lambda_D * loss_GAN + losses["loss"]
+
+            # Train Discriminator
+            if self.epoch > self.opt.discr_train_epoch:
+                loss_G.backward(retain_graph=True)
+                self.model_optimizer.step()
+                self.model_optimizer_D.zero_grad()
+                loss_D.backward()
+                self.model_optimizer_D.step()
+            else:
+                losses["loss"].backward()
+                self.model_optimizer.step()
+
+            loss["loss"] += losses["loss"].item()
+            loss["loss_discr"] += loss_D.item()
+        loss["loss"] /= len(self.train_loader)
+        loss["loss_discr"] /= len(self.train_loader)
+        return loss
+
+
+    def validation(self):
+        iou, mAP = np.array([0., 0.]), np.array([0., 0.])
+        for batch_idx, inputs in tqdm.tqdm(enumerate(self.val_loader)):
+            with torch.no_grad():
+                outputs = self.process_batch(inputs, True)
+            pred = np.squeeze(torch.argmax(outputs["topview"].detach(), 1).cpu().numpy())
+            true = np.squeeze(inputs[self.opt.type].detach().cpu().numpy())
+            #print(pred.shape, true.shape)
+            iou += mean_IU(pred, true)
+            mAP += mean_precision(pred, true)
+        iou /= len(self.val_loader)
+        mAP /= len(self.val_loader)
+        print("Epoch: %d | Validation: mIOU: %.4f mAP: %.4f"%(self.epoch, iou[1], mAP[1]))
+
 
 
     def compute_losses(self, inputs, outputs):
@@ -217,7 +283,7 @@ class Trainer:
         return output.mean()
 
     def save_model(self):
-        save_path = os.path.join(self.opt.save_path, self.opt.model_name, "weights_{}".format(self.epoch))
+        save_path = os.path.join(self.opt.save_path, self.opt.model_name, self.opt.split, "weights_{}".format(self.epoch))
 
         if not os.path.exists(save_path):
             os.makedirs(save_path)
@@ -234,7 +300,33 @@ class Trainer:
         torch.save(self.model_optimizer.state_dict(), optim_path)
 
     def load_model(self):
-        pass
+        """Load model(s) from disk
+        """
+        self.opt.load_weights_folder = os.path.expanduser(self.opt.load_weights_folder)
+
+        assert os.path.isdir(self.opt.load_weights_folder), \
+            "Cannot find folder {}".format(self.opt.load_weights_folder)
+        print("loading model from folder {}".format(self.opt.load_weights_folder))
+
+        for key in self.models.keys():
+            print("Loading {} weights...".format(n))
+            path = os.path.join(self.opt.load_weights_folder, "{}.pth".format(key))
+            model_dict = self.models[key].state_dict()
+            pretrained_dict = torch.load(path)
+            pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+            model_dict.update(pretrained_dict)
+            self.models[key].load_state_dict(model_dict)
+
+        # loading adam state
+        optimizer_load_path = os.path.join(self.opt.load_weights_folder, "adam.pth")
+        if os.path.isfile(optimizer_load_path):
+            print("Loading Adam weights")
+            optimizer_dict = torch.load(optimizer_load_path)
+            self.model_optimizer.load_state_dict(optimizer_dict)
+            #self.optimizer_G.load_state_dict(optimizer_dict)
+        else:
+            print("Cannot find Adam weights so Adam is randomly initialized")
+
 
 
 
