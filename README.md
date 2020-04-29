@@ -81,5 +81,3 @@ python3 test.py --type static --model_path <path to the model folder> --image_pa
 
 ![](figs/argo_1.gif)
 
-
-**Code will be released by late March 2020**
