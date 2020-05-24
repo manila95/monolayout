@@ -1,30 +1,24 @@
 
 import numpy as np
 import time
-# import eval_segm
+
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
-# from validate import *
+
 import os
 import json
 import tqdm
 import argparse
+import monolayout
 from eval import *
-# from utils import *
-# from kitti_utils import *
-# from layers import *
-# from metric.iou import IoU
-# from fcn_iou import *
+
 from IPython import embed
 from torch.autograd import Variable
 
-
-import model
-import dataloader
 
 def get_args():
     parser 	= argparse.ArgumentParser(description="MonoLayout options")
@@ -95,17 +89,17 @@ class Trainer:
         self.parameters_to_train_D = []
 
 		# Initializing models
-        self.models["encoder"] = model.Encoder(18, self.opt.height, self.opt.width, True)
+        self.models["encoder"] = monolayout.Encoder(18, self.opt.height, self.opt.width, True)
         if self.opt.type == "both":
-            self.models["static_decoder"] = model.Decoder(
+            self.models["static_decoder"] = monolayout.Decoder(
                 self.models["encoder"].resnet_encoder.num_ch_enc)
-            self.models["static_discr"] = model.Discriminator()
-            self.models["dynamic_decoder"] = model.Discriminator()
-            self.models["dynamic_decoder"] = model.Decoder(
+            self.models["static_discr"] = monolayout.Discriminator()
+            self.models["dynamic_decoder"] = monolayout.Discriminator()
+            self.models["dynamic_decoder"] = monolayout.Decoder(
                 self.models["encoder"].resnet_encoder.num_ch_enc)
         else:
-            self.models["decoder"] = model.Decoder(self.models["encoder"].resnet_encoder.num_ch_enc)
-            self.models["discriminator"] = model.Discriminator()
+            self.models["decoder"] = monolayout.Decoder(self.models["encoder"].resnet_encoder.num_ch_enc)
+            self.models["discriminator"] = monolayout.Discriminator()
 
         for key in self.models.keys():
             self.models[key].to(self.device)
@@ -131,9 +125,9 @@ class Trainer:
                                                      requires_grad=False).float().cuda()
 
         ## Data Loaders
-        dataset_dict = {"3Dobject": dataloader.KITTIObject, 
-                        "odometry": dataloader.KITTIOdometry,
-                        "argo":     dataloader.Argoverse}
+        dataset_dict = {"3Dobject": monolayout.KITTIObject, 
+                        "odometry": monolayout.KITTIOdometry,
+                        "argo":     monolayout.Argoverse}
 
         self.dataset = dataset_dict[self.opt.split]
         fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")

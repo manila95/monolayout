@@ -6,7 +6,7 @@
 #### Accepted to [WACV 2020](http://wacv20.wacv.net/)
 
 <p align="center">
-    <img src="figs/teaserv5.png" />
+    <img src="assets/teaserv5.png" />
 </p>
 
 ## Abstract
@@ -91,22 +91,22 @@ python3 test.py --type <static/dynamic> --model_path <path to the model folder> 
 
 
 <p align="center">
-    <img src="figs/kitti1.gif" />
+    <img src="assets/kitti1.gif" />
 </p>
 
 <p align="center">
-    <img src="figs/kitti_final.gif" />
+    <img src="assets/kitti_final.gif" />
 </p>
 
 
 ## Results (Argoverse Dataset)
 
 <p align="center">
-    <img src="figs/argo_2.gif" />
+    <img src="assets/argo_2.gif" />
 </p>
 
 <p align="center">
-    <img src="figs/argo_1.gif" />
+    <img src="assets/argo_1.gif" />
 </p>
 
 ## Citing (BibTeX)
