@@ -202,8 +202,8 @@ The following table provides links to the pretrained models for each dataset men
 
 | KITTI  | Argoverse |
 |:------:|:---------:|
-|<p align="center"><img src="assets/kitti1.gif" /> </p> | <p align="center"><img src="assets/kitti_final.gif"/></p>|
-|<p align="center"><img src="assets/argo_2.gif"/></p> | <p align="center"><img src="assets/argo_1.gif"/></p>|
+|<p align="center"><img src="assets/kitti1.gif" /> </p> | <p align="center"><img src="assets/argo_2.gif"/></p>|
+|<p align="center"><img src="assets/kitti_final.gif"/></p> | <p align="center"><img src="assets/argo_1.gif"/></p>|
 
 ## Citing (BibTeX)
 
