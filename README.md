@@ -198,27 +198,12 @@ The following table provides links to the pretrained models for each dataset men
 |  Argoverse Tracking |   Static   |  1024 x 1024  | 256 x 256  |  73.25 | 84.56 |         36fps        |[link](https://iiitaphyd-my.sharepoint.com/:f:/g/personal/kaustubh_mani_research_iiit_ac_in/Eptj9pcxVzlDvdLCqO8LtMABLqNCtty8dNZSpmd-p9Y8AA?e=X3zS2F)  |
 
 
-## Results (KITTI Dataset)
+## Results
 
-
-<p align="center">
-    <img src="assets/kitti1.gif", width=1000 />
-</p>
-
-<p align="center">
-    <img src="assets/kitti_final.gif", width=1000 />
-</p>
-
-
-## Results (Argoverse Dataset)
-
-<p align="center">
-    <img src="assets/argo_2.gif", width=1000 />
-</p>
-
-<p align="center">
-    <img src="assets/argo_1.gif", width=1000 />
-</p>
+| KITTI  | Argoverse |
+|:------:|:---------:|
+|<p align="center"><img src="assets/kitti1.gif" /> </p> | <p align="center"><img src="assets/kitti_final.gif"/></p>|
+|<p align="center"><img src="assets/argo_2.gif"/></p> | <p align="center"><img src="assets/argo_1.gif"/></p>|
 
 ## Citing (BibTeX)
 
