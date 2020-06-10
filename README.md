@@ -26,6 +26,23 @@ State-of-the-art amodal scene layout from a single image @ >32 fps*
 * We evaluate against several state-of-the-art approaches, and outperform all of them by a significant margin on a number of established benchmarks (KITTI-Raw, KITTI-Object, KITTIOdometry, Argoverse).
 * Further, we show that MonoLayout can also be efficiently trained on datasets that do not contain lidar scans by leveraging recent successes in monocular depth estimation.
 
+## Repository Structure
+
+```
+monolayout/
+├── data
+│   └── osm              # Contains OSM maps constituting the true data distribution for roads
+├── monolayout           # Contains scripts for dataloaders and network/model architecture
+├── preprocessing        
+│   ├── argoverse        # Contains scripts for generating weak supervision and groundtruth for Argoverse Tracking dataset
+│   └── kitti            # Contains scripts for generating weak supervision and groundtruth for KITTI datasets
+└── splits
+    ├── 3Dobject         # Training and testing splits for KITTI 3DObject Detection dataset 
+    ├── argo             # Training and testing splits for Argoverse Tracking v1.0 dataset
+    ├── odometry         # Training and testing splits for KITTI Odometry dataset
+    └── raw              # Training and testing splits for KITTI RAW dataset(based on Schulter et. al.)
+```
+
 
 
 ## Installation
