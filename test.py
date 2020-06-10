@@ -16,8 +16,6 @@ from torchvision import transforms, datasets
 
 import os
 import cv2
-#from layers import disp_to_depth
-#from utils import download_model_if_doesnt_exist
 
 
 
@@ -45,9 +43,6 @@ def save_topview(idx, tv, name_dest_im):
 	dir_name = os.path.dirname(name_dest_im)
 	if not os.path.exists(dir_name):
 		os.makedirs(dir_name)
-	# print(name_dest_im)
-	# im = Image.fromarray(true_top_view)
-	# im.save(name_dest_im)
 	cv2.imwrite(name_dest_im, true_top_view)
 
 	print("Saved prediction to {}".format(name_dest_im))
