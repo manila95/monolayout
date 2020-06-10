@@ -12,17 +12,19 @@ def get_args():
     parser.add_argument("--base_path", type=str, default="./kitti_raw",
                          help="Path to the root data directory")
     parser.add_argument("--date", type=str, default="2011_09_26",
-                         help="Corresponding date for KITTI RAW dataset")   
+                         help="Corresponding date from the KITTI RAW dataset")   
     parser.add_argument("--sequence", type=str, default="0001",
                          help="Sequence number corresponding to a particular date")
     parser.add_argument("--out_dir", type=str, default='',
-                         help="Data split for training/validation")
+                         help="Output directory to save layouts")
     parser.add_argument("--range", type=int, default=40,
-    			 help="Size of the rectangular grid in metric space")
+    			 help="Size of the rectangular grid in metric space (in m)")
     parser.add_argument("--occ_map_size", type=int, default=256,
-    			 help="Occupancy map size ")
+    			 help="Occupancy map size (in pixels)")
     parser.add_argument("--seg_class", type=str, choices=["road", "sidewalk", "vehicle"],
-                         help="Data Preparation for Road/Sidewalk")
+                         help="Data Preparation for Road/Sidewalk/Vehicle")
+    parser.add_argument("--process", type=str, choices=["all", "one"], default="one",
+                         help="Process entire KITTI RAW dataset or one sequence at a time")
 
     return parser.parse_args()
 
@@ -108,15 +110,25 @@ def get_3Dbox_to_2Dbox(label_path,length,width, res, out_dir):
 
 
 
+def account_for_missing_files(args):
+    velo_path = os.path.join(args.base_path, "2011_09_26/2011_09_26_drive_0009_sync/velodyne_points/data/")
+    os.system("cp -r %s %s"%(os.path.join(velo_path, "0000000176.bin"), os.path.join(velo_path, "0000000177.bin")))
+    os.system("cp -r %s %s"%(os.path.join(velo_path, "0000000176.bin"), os.path.join(velo_path, "0000000178.bin")))
+    os.system("cp -r %s %s"%(os.path.join(velo_path, "0000000181.bin"), os.path.join(velo_path, "0000000179.bin")))
+    os.system("cp -r %s %s"%(os.path.join(velo_path, "0000000181.bin"), os.path.join(velo_path, "0000000180.bin")))
 
 
-def get_static_bev(args):
+
+
+def get_static_bev(args, date, sequence):
 	basedir = args.base_path
-	sequence = args.sequence
-	seg_dir = args.seg_dir
-	out_dir = args.out_dir
+	if args.out_dir == "":
+	    out_dir = basedir
 	seg_class = 'road'
 
+	# Taking care of missing files in date 2011_09_26 sequence 0009 
+	if args.date == "2011_09_26" and args.sequence == "0009":
+	    account_for_missing_files(args)
 
 	label = {'road' : [13, 24], 'sidewalk' : [15]}
 	res = args.range / float(args.occ_map_size)
@@ -128,10 +140,11 @@ def get_static_bev(args):
 	cols = args.occ_map_size
 
 
-	data = pykitti.raw(args.base_path, args.date, args.sequence)
+	data = pykitti.raw(args.base_path, date, sequence)
 
 	num_frames = len(data.timestamps)
-	print("total number of frames : " + str(num_frames).zfill(6))
+	print("Processing Date: %s, Sequence: %s"%(date, sequence))
+	#print("total number of frames : " + str(num_frames).zfill(6))
 
 	K = np.zeros((4, 4))	
 	K[0:3, 0:3] = data.calib.K_cam2
@@ -141,10 +154,13 @@ def get_static_bev(args):
 
 	oxts = data.oxts
 
-	output_folder = os.path.join(args.base_path, args.date, args.date + '_drive_' + args.sequence + '_sync', "%s_%d"%(seg_class, args.occ_map_size))
+	output_folder = os.path.join(out_dir, date, date + '_drive_' + sequence + '_sync', "%s_%d"%(seg_class, args.occ_map_size))
 
 	if not os.path.exists(output_folder):
 		os.makedirs(output_folder)
+
+	# elif len(os.listdir(output_folder)) == len(os.path.join(os.path.dirname(output_folder), "image_02/data/")):
+	#     return
 
 	dense_class_base_pts_hom = np.zeros((4, 1))
 	for frame_no in range(num_frames):
@@ -157,7 +173,7 @@ def get_static_bev(args):
 		velo_pts = velo_pts[velo_pts[:, 0] < 30, :]
 		velo_pts_hom = np.ones((4, np.shape(velo_pts)[0]))
 		velo_pts_hom[0:3, :] = velo_pts[:, 0:3].T
-		frame_seg_path = os.path.join(args.base_path, args.date, args.date + '_drive_' + args.sequence + '_sync', "segmentation", str(frame_no).zfill(10) + '.png')
+		frame_seg_path = os.path.join(args.base_path, date, date + '_drive_' + sequence + '_sync', "image_02/segmentation", str(frame_no).zfill(10) + '.png')
 		frame_seg_img = np.asarray(Image.open(frame_seg_path))
 		seg_class_velo_pts_hom = get_road_velo_pts(velo_pts_hom, frame_seg_img, Tr_cam2_velo, K, label[seg_class]) 
 		seg_class_cam_pts_hom = np.matmul(Tr_cam2_velo, seg_class_velo_pts_hom)
@@ -201,11 +217,19 @@ def get_static_bev(args):
 if __name__ == "__main__":
 	args = get_args()
 	if args.seg_class == "vehicle":
-            out_dir = os.path.join(os.path.dirname(os.path.normpath(args.base_path)), "vehicle_%d"%args.occ_map_size)
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
-            for file_path in os.listdir(args.base_path):
-                label_path = os.path.join(args.base_path, file_path)
-                get_3Dbox_to_2Dbox(label_path, args.range, args.range, args.range / float(args.occ_map_size), out_dir)
-	else:
-		get_static_bev(args)
+		out_dir = os.path.join(os.path.dirname(os.path.normpath(args.base_path)), "vehicle_%d"%args.occ_map_size)
+		if not os.path.exists(out_dir):
+		    os.makedirs(out_dir)
+		for file_path in os.listdir(args.base_path):
+		    label_path = os.path.join(args.base_path, file_path)
+		    get_3Dbox_to_2Dbox(label_path, args.range, args.range, args.range / float(args.occ_map_size), out_dir)
+	elif args.seg_class == "road":
+		if args.process == "all":
+			for date in os.listdir(args.base_path):
+			    for folder in os.listdir(os.path.join(args.base_path, date)):
+                                if not os.path.isdir(os.path.join(args.base_path, date, folder)):
+                                    continue
+                                sequence = folder.split("_")[-2]
+                                get_static_bev(args, date, sequence)
+		else:
+			get_static_bev(args, args.date, args.sequence)

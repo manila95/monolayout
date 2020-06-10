@@ -26,9 +26,11 @@ def get_args():
                          help="Path to the root data directory")
     parser.add_argument("--save_path", type=str, default="./models/",
                          help="Path to save models")
+    parser.add_argument("--load_weights_folder", type=str, default="",
+                         help="Path to a pretrained model used for initialization")
     parser.add_argument("--model_name", type=str, default="monolayout",
                          help="Model Name with specifications")
-    parser.add_argument("--split", type=str, choices=["argo", "3Dobject", "odometry"],
+    parser.add_argument("--split", type=str, choices=["argo", "3Dobject", "odometry", "raw"],
                          help="Data split for training/validation")
     parser.add_argument("--ext", type=str, default="png",
                          help="File extension of the images")
@@ -88,7 +90,7 @@ class Trainer:
         self.parameters_to_train = []
         self.parameters_to_train_D = []
 
-		# Initializing models
+	# Initializing models
         self.models["encoder"] = monolayout.Encoder(18, self.opt.height, self.opt.width, True)
         if self.opt.type == "both":
             self.models["static_decoder"] = monolayout.Decoder(
@@ -127,7 +129,8 @@ class Trainer:
         ## Data Loaders
         dataset_dict = {"3Dobject": monolayout.KITTIObject, 
                         "odometry": monolayout.KITTIOdometry,
-                        "argo":     monolayout.Argoverse}
+                        "argo":     monolayout.Argoverse,
+                        "raw":      monolayout.KITTIRAW}
 
         self.dataset = dataset_dict[self.opt.split]
         fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
@@ -140,13 +143,15 @@ class Trainer:
 
 
         train_dataset = self.dataset(self.opt, train_filenames)
-        val_dataset = self.dataset(self.opt, val_filenames)
+        val_dataset = self.dataset(self.opt, val_filenames, is_train=False)
 
         self.train_loader = DataLoader(train_dataset, self.opt.batch_size, True,
                                        num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         self.val_loader = DataLoader(val_dataset, 1, True,
                                        num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
 
+        if self.opt.load_weights_folder != "":
+            self.load_model()
 
         print("Using split:\n  ", self.opt.split)
         print("There are {:d} training items and {:d} validation items\n".format(
@@ -243,7 +248,7 @@ class Trainer:
             with torch.no_grad():
                 outputs = self.process_batch(inputs, True)
             pred = np.squeeze(torch.argmax(outputs["topview"].detach(), 1).cpu().numpy())
-            true = np.squeeze(inputs[self.opt.type].detach().cpu().numpy())
+            true = np.squeeze(inputs[self.opt.type+"_gt"].detach().cpu().numpy())
             #print(pred.shape, true.shape)
             iou += mean_IU(pred, true)
             mAP += mean_precision(pred, true)
@@ -303,7 +308,7 @@ class Trainer:
         print("loading model from folder {}".format(self.opt.load_weights_folder))
 
         for key in self.models.keys():
-            print("Loading {} weights...".format(n))
+            print("Loading {} weights...".format(key))
             path = os.path.join(self.opt.load_weights_folder, "{}.pth".format(key))
             model_dict = self.models[key].state_dict()
             pretrained_dict = torch.load(path)

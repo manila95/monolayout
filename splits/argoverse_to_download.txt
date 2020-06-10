@@ -1,0 +1,6 @@
+https://s3.amazonaws.com/argoai-argoverse/tracking_train1.tar.gz
+https://s3.amazonaws.com/argoai-argoverse/tracking_train2.tar.gz
+https://s3.amazonaws.com/argoai-argoverse/tracking_train3.tar.gz
+https://s3.amazonaws.com/argoai-argoverse/tracking_train4.tar.gz
+https://s3.amazonaws.com/argoai-argoverse/tracking_val.tar.gz
+#https://s3.amazonaws.com/argoai-argoverse/tracking_test.tar.gz

@@ -101,16 +101,28 @@ class MonoDataset(data.Dataset):
 
         inputs["color"] = self.get_color(folder, frame_index, do_flip)
         if self.opt.type == "static":
-            inputs["static"] = self.get_static(folder, frame_index, do_flip)
-            inputs["discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
+            if self.is_train:
+                inputs["static"] = self.get_static(folder, frame_index, do_flip)
+                inputs["discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
+            else:
+                inputs["static_gt"] = self.get_static_gt(folder, frame_index, do_flip)
             # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
         elif self.opt.type == "dynamic":
-            inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
-            inputs["discr"] = process_discr(inputs["dynamic"], self.opt.occ_map_size)
+            if self.is_train:
+                inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
+                inputs["discr"] = process_discr(inputs["dynamic"], self.opt.occ_map_size)
+            else:
+                inputs["dynamic_gt"] = self.get_dynamic_gt(folder, frame_index, do_flip)
             # inputs["true_dynamic"] = self.get_osm(folder, frame_index, do_flip)
         else:
-            inputs["static"] = self.get_static(folder, frame_index, do_flip)
-            inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
+            if self.is_train:
+                inputs["static"] = self.get_static(folder, frame_index, do_flip)
+                inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
+                inputs["static_discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
+                inputs["dynamic_discr"] = self.get_dynamic(folder, frame_index, do_flip)
+            else:
+                inputs["dynamic_gt"] = self.get_dynamic_gt(folder, frame_index, do_flip)
+                inputs["static_gt"] = self.get_dynamic_gt(folder, frame_index, do_flip)
 
        # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
    
@@ -151,6 +163,14 @@ class MonoDataset(data.Dataset):
     def get_osm(self, root_dir, do_flip):
         osm = self.loader(self.get_osm_path(root_dir))
         return osm
+    
+    def get_static_gt(self, folder, frame_index, do_flip):
+        tv = self.loader(self.get_static_gt_path(folder, frame_index))
+        return tv.convert('L')
+
+    def get_dynamic_gt(self, folder, frame_index, do_flip):
+        tv = self.loader(self.get_dynamic_gt_path(folder, frame_index))
+        return tv.convert('L')
 
 
 
@@ -167,10 +187,16 @@ class KITTIObject(MonoDataset):
         return img_path
 
     def get_dynamic_path(self, root_dir, frame_index):
-        tv_dir = os.path.join(root_dir, 'TV_car')
+        tv_dir = os.path.join(root_dir, 'vehicle_256')
         tv_path = os.path.join(tv_dir, "%06d.png" % int(frame_index))
         return tv_path
 
+
+    def get_dynamic_gt_path(self, root_dir, frame_index):
+        return self.get_dynamic_path(root_dir, frame_index)
+
+    def get_static_gt_path(self, root_dir, frame_index):
+        pass
 
 
 class KITTIOdometry(MonoDataset):
@@ -193,15 +219,48 @@ class KITTIOdometry(MonoDataset):
 
         return osm_path
 
+    def get_static_gt_path(self, root_dir, frame_index):
+        return get_static_path(self, root_dir, frame_index)
+
+    def get_dynamic_gt_path(self, root_dir, frame_index):
+        pass
+
+
+class KITTIRAW(MonoDataset):
+    def __init__(self, *args, **kwargs):
+        super(KITTIRAW, self).__init__(*args, **kwargs)
+        self.root_dir = "./data/raw/"
+
+    def get_image_path(self, root_dir, frame_index):
+        img_path = os.path.join(root_dir, frame_index)
+        return img_path
+
+    def get_static_path(self, root_dir, frame_index):
+        path = os.path.join(root_dir,frame_index.replace("image_02/data", "road_256"))
+        return path
+
+    def get_osm_path(self, root_dir):
+        osm_file = np.random.choice(os.listdir(root_dir))
+        osm_path = os.path.join(root_dir, osm_file)
+
+        return osm_path
+
+    def get_static_gt_path(self, root_dir, frame_index):
+        path = os.path.join(root_dir, frame_index.replace("image_02/data", "road_bev_gt"))
+        return path
+
+    def get_dynamic_gt_path(self, root_dir, frame_index):
+        pass
+
 
 
 class Argoverse(MonoDataset):
     def __init__(self, *args, **kwargs):
-        super(KITTIOdometry, self).__init__(*args, **kwargs)
+        super(Argoverse, self).__init__(*args, **kwargs)
         self.root_dir = "./data/argo"
 
     def get_image_path(self, root_dir, frame_index):
-    	file_name = frame_index.replace("road_bev", "stereo_front_left")
+    	file_name = frame_index.replace("road_gt", "stereo_front_left").replace("png", "jpg")
     	img_path = os.path.join(root_dir, file_name)
     	return img_path
 
@@ -210,7 +269,15 @@ class Argoverse(MonoDataset):
         return path
 
     def get_dynamic_path(self, root_dir, frame_index):
-    	file_name = frame_index.replace("road_bev", "car_bev")
+    	file_name = frame_index.replace("road_gt", "car_bev_gt").replace("png", "jpg")
     	path = os.path.join(root_dir, file_name)
     	return path
+
+    def get_static_gt_path(self, root_dir, frame_index):
+        path = os.path.join(root_dir, frame_index).replace("road_bev", "road_gt")
+        return path
+
+    def get_dynamic_gt_path(self, root_dir, frame_index):
+        return get_dynamic_path(self, root_dir, frame_index)
+    
 
