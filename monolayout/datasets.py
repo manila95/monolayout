@@ -2,32 +2,31 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import skimage.transform
-import numpy as np
-import PIL.Image as pil
-from PIL import Image  # using pillow-simd for increased speed
-
-import torch
 import random
+
+import PIL.Image as pil
+
+import numpy as np
+
 import torch.utils.data as data
+
 from torchvision import transforms
-
-
 
 
 def pil_loader(path):
     with open(path, 'rb') as f:
-        with Image.open(f) as img:
+        with pil.open(f) as img:
             return img.convert('RGB')
 
+
 def process_topview(topview, size):
-	topview = topview.convert("1")
-	topview = topview.resize((size, size), Image.NEAREST)
-	topview = topview.convert("L")
-	topview = np.array(topview)
-	topview_n = np.zeros(topview.shape)
-	topview_n[topview==255] = 1#[1.,0.]
-	return topview_n
+    topview = topview.convert("1")
+    topview = topview.resize((size, size), pil.NEAREST)
+    topview = topview.convert("L")
+    topview = np.array(topview)
+    topview_n = np.zeros(topview.shape)
+    topview_n[topview == 255] = 1  # [1.,0.]
+    return topview_n
 
 
 def resize_topview(topview, size):
@@ -41,8 +40,8 @@ def resize_topview(topview, size):
 def process_discr(topview, size):
     topview = resize_topview(topview, size)
     topview_n = np.zeros((size, size, 2))
-    topview_n[topview==255, 1] = 1.
-    topview_n[topview==0, 0] = 1.
+    topview_n[topview == 255, 1] = 1.
+    topview_n[topview == 0, 0] = 1.
     return topview_n
 
 
@@ -56,12 +55,10 @@ class MonoDataset(data.Dataset):
         self.is_train = is_train
         self.height = self.opt.height
         self.width = self.opt.width
-        self.interp = Image.ANTIALIAS
+        self.interp = pil.ANTIALIAS
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
 
-        # We need to specify augmentations differently in newer versions of torchvision.
-        # We first try the newer tuple version; if this fails we fall back to scalars
         try:
             self.brightness = (0.8, 1.2)
             self.contrast = (0.8, 1.2)
@@ -75,7 +72,8 @@ class MonoDataset(data.Dataset):
             self.saturation = 0.2
             self.hue = 0.1
 
-        self.resize = transforms.Resize((self.height, self.width), interpolation=self.interp)
+        self.resize = transforms.Resize(
+            (self.height, self.width), interpolation=self.interp)
 
     def preprocess(self, inputs, color_aug):
 
@@ -83,9 +81,9 @@ class MonoDataset(data.Dataset):
 
         for key in inputs.keys():
             if key != "color" and "discr" not in key:
-                inputs[key] = process_topview(inputs[key], self.opt.occ_map_size)
+                inputs[key] = process_topview(
+                    inputs[key], self.opt.occ_map_size)
             inputs[key] = self.to_tensor(inputs[key])
-
 
     def __len__(self):
         return len(self.filenames)
@@ -96,36 +94,49 @@ class MonoDataset(data.Dataset):
         do_color_aug = self.is_train and random.random() > 0.5
         do_flip = self.is_train and random.random() > 0.5
 
-        frame_index = self.filenames[index]#.split()
-        folder = self.opt.data_path  #check this part from original code if the dataset is changed
+        frame_index = self.filenames[index]  # .split()
+        # check this part from original code if the dataset is changed
+        folder = self.opt.data_path
 
         inputs["color"] = self.get_color(folder, frame_index, do_flip)
         if self.opt.type == "static":
             if self.is_train:
-                inputs["static"] = self.get_static(folder, frame_index, do_flip)
-                inputs["discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
+                inputs["static"] = self.get_static(
+                    folder, frame_index, do_flip)
+                inputs["discr"] = process_discr(
+                    self.get_osm(
+                        self.opt.osm_path,
+                        do_flip),
+                    self.opt.occ_map_size)
             else:
-                inputs["static_gt"] = self.get_static_gt(folder, frame_index, do_flip)
+                inputs["static_gt"] = self.get_static_gt(
+                    folder, frame_index, do_flip)
             # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
         elif self.opt.type == "dynamic":
             if self.is_train:
-                inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
-                inputs["discr"] = process_discr(inputs["dynamic"], self.opt.occ_map_size)
+                inputs["dynamic"] = self.get_dynamic(
+                    folder, frame_index, do_flip)
+                inputs["discr"] = process_discr(
+                    inputs["dynamic"], self.opt.occ_map_size)
             else:
-                inputs["dynamic_gt"] = self.get_dynamic_gt(folder, frame_index, do_flip)
-            # inputs["true_dynamic"] = self.get_osm(folder, frame_index, do_flip)
+                inputs["dynamic_gt"] = self.get_dynamic_gt(
+                    folder, frame_index, do_flip)
         else:
             if self.is_train:
-                inputs["static"] = self.get_static(folder, frame_index, do_flip)
-                inputs["dynamic"] = self.get_dynamic(folder, frame_index, do_flip)
-                inputs["static_discr"] = process_discr(self.get_osm(self.opt.osm_path, do_flip), self.opt.occ_map_size)
-                inputs["dynamic_discr"] = self.get_dynamic(folder, frame_index, do_flip)
+                inputs["static"] = self.get_static(
+                    folder, frame_index, do_flip)
+                inputs["dynamic"] = self.get_dynamic(
+                    folder, frame_index, do_flip)
+                inputs["static_discr"] = process_discr(self.get_osm(
+                    self.opt.osm_path, do_flip), self.opt.occ_map_size)
+                inputs["dynamic_discr"] = self.get_dynamic(
+                    folder, frame_index, do_flip)
             else:
-                inputs["dynamic_gt"] = self.get_dynamic_gt(folder, frame_index, do_flip)
-                inputs["static_gt"] = self.get_dynamic_gt(folder, frame_index, do_flip)
+                inputs["dynamic_gt"] = self.get_dynamic_gt(
+                    folder, frame_index, do_flip)
+                inputs["static_gt"] = self.get_dynamic_gt(
+                    folder, frame_index, do_flip)
 
-       # inputs["osm"] = self.get_osm(folder, frame_index, do_flip)
-   
         if do_color_aug:
             color_aug = transforms.ColorJitter.get_params(
                 self.brightness, self.contrast, self.saturation, self.hue)
@@ -163,7 +174,7 @@ class MonoDataset(data.Dataset):
     def get_osm(self, root_dir, do_flip):
         osm = self.loader(self.get_osm_path(root_dir))
         return osm
-    
+
     def get_static_gt(self, folder, frame_index, do_flip):
         tv = self.loader(self.get_static_gt_path(folder, frame_index))
         return tv.convert('L')
@@ -173,10 +184,10 @@ class MonoDataset(data.Dataset):
         return tv.convert('L')
 
 
-
 class KITTIObject(MonoDataset):
     """KITTI dataset which loads the original velodyne depth maps for ground truth
     """
+
     def __init__(self, *args, **kwargs):
         super(KITTIObject, self).__init__(*args, **kwargs)
         self.root_dir = "./data/object"
@@ -190,7 +201,6 @@ class KITTIObject(MonoDataset):
         tv_dir = os.path.join(root_dir, 'vehicle_256')
         tv_path = os.path.join(tv_dir, "%06d.png" % int(frame_index))
         return tv_path
-
 
     def get_dynamic_gt_path(self, root_dir, frame_index):
         return self.get_dynamic_path(root_dir, frame_index)
@@ -210,7 +220,7 @@ class KITTIOdometry(MonoDataset):
         return img_path
 
     def get_static_path(self, root_dir, frame_index):
-        path = os.path.join(root_dir, 	frame_index)
+        path = os.path.join(root_dir, frame_index)
         return path
 
     def get_osm_path(self, root_dir):
@@ -220,7 +230,7 @@ class KITTIOdometry(MonoDataset):
         return osm_path
 
     def get_static_gt_path(self, root_dir, frame_index):
-        return get_static_path(self, root_dir, frame_index)
+        return self.get_static_path(self, root_dir, frame_index)
 
     def get_dynamic_gt_path(self, root_dir, frame_index):
         pass
@@ -236,7 +246,9 @@ class KITTIRAW(MonoDataset):
         return img_path
 
     def get_static_path(self, root_dir, frame_index):
-        path = os.path.join(root_dir,frame_index.replace("image_02/data", "road_256"))
+        path = os.path.join(
+            root_dir, frame_index.replace(
+                "image_02/data", "road_256"))
         return path
 
     def get_osm_path(self, root_dir):
@@ -246,12 +258,13 @@ class KITTIRAW(MonoDataset):
         return osm_path
 
     def get_static_gt_path(self, root_dir, frame_index):
-        path = os.path.join(root_dir, frame_index.replace("image_02/data", "road_bev_gt"))
+        path = os.path.join(
+            root_dir, frame_index.replace(
+                "image_02/data", "road_bev_gt"))
         return path
 
     def get_dynamic_gt_path(self, root_dir, frame_index):
         pass
-
 
 
 class Argoverse(MonoDataset):
@@ -260,24 +273,30 @@ class Argoverse(MonoDataset):
         self.root_dir = "./data/argo"
 
     def get_image_path(self, root_dir, frame_index):
-    	file_name = frame_index.replace("road_gt", "stereo_front_left").replace("png", "jpg")
-    	img_path = os.path.join(root_dir, file_name)
-    	return img_path
+        file_name = frame_index.replace(
+            "road_gt", "stereo_front_left").replace(
+            "png", "jpg")
+        img_path = os.path.join(root_dir, file_name)
+        return img_path
 
     def get_static_path(self, root_dir, frame_index):
         path = os.path.join(root_dir, frame_index)
         return path
 
     def get_dynamic_path(self, root_dir, frame_index):
-    	file_name = frame_index.replace("road_gt", "car_bev_gt").replace("png", "jpg")
-    	path = os.path.join(root_dir, file_name)
-    	return path
+        file_name = frame_index.replace(
+            "road_gt", "car_bev_gt").replace(
+            "png", "jpg")
+        path = os.path.join(root_dir, file_name)
+        return path
 
     def get_static_gt_path(self, root_dir, frame_index):
-        path = os.path.join(root_dir, frame_index).replace("road_bev", "road_gt")
+        path = os.path.join(
+            root_dir,
+            frame_index).replace(
+            "road_bev",
+            "road_gt")
         return path
 
     def get_dynamic_gt_path(self, root_dir, frame_index):
-        return get_dynamic_path(self, root_dir, frame_index)
-    
-
+        return self.get_dynamic_path(self, root_dir, frame_index)
