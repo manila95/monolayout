@@ -158,7 +158,7 @@ def get_static_bev(args, date, sequence):
     seg_class = 'road'
 
     # Taking care of missing files in date 2011_09_26 sequence 0009
-    if args.date == "2011_09_26" and args.sequence == "0009":
+    if date == "2011_09_26" and sequence == "0009":
         account_for_missing_files(args)
 
     label = {'road': [13, 24], 'sidewalk': [15]}
