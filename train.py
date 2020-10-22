@@ -246,9 +246,9 @@ class Trainer:
             # Train Discriminator
             if self.epoch > self.opt.discr_train_epoch:
                 loss_G.backward(retain_graph=True)
-                self.model_optimizer.step()
                 self.model_optimizer_D.zero_grad()
                 loss_D.backward()
+                self.model_optimizer.step()
                 self.model_optimizer_D.step()
             else:
                 losses["loss"].backward()
