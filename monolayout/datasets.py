@@ -230,7 +230,7 @@ class KITTIOdometry(MonoDataset):
         return osm_path
 
     def get_static_gt_path(self, root_dir, frame_index):
-        return self.get_static_path(self, root_dir, frame_index)
+        return self.get_static_path(root_dir, frame_index)
 
     def get_dynamic_gt_path(self, root_dir, frame_index):
         pass
