@@ -19,7 +19,7 @@ sklearn==0.0
 subprocess32==3.5.4
 sympy==1.5.1
 tensorboard==1.14.0
-tensorflow==1.15.4
+tensorflow==2.5.3
 tensorflow-estimator==1.14.0
 tqdm==4.36.1
 pytorch==1.6.0
