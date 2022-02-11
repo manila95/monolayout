@@ -2,7 +2,7 @@ opencv-python==4.1.1.26
 pandas==0.24.2
 Pillow==6.2.0
 pptk==0.1.0
-protobuf==3.10.0
+protobuf==3.15.0
 pykitti==0.3.1
 scikit-image==0.14.2
 scikit-learn==0.20.3
