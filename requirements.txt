@@ -1,4 +1,4 @@
-opencv-python==4.1.1.26
+opencv-python==4.2.0.32
 pandas==0.24.2
 Pillow==6.2.0
 pptk==0.1.0
